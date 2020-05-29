@@ -1,6 +1,7 @@
 import json
 from os import listdir
 from os.path import isfile, join
+from cky import cky_parse
 
 def read_forecast(filename):
     """Reads the forecast JSON into a dictionary."""
@@ -35,7 +36,7 @@ def minutely_summary(forecast):
 
 def hourly_summary(forecast):
     """Extracts the 'hourly' summary from a forecast dictionary."""
-    if 'hourly' in forecast:
+    if 'hourly' in forecast and 'summary' in forecast['hourly']:
         return forecast['hourly']['summary']
     else:
         return None
@@ -54,3 +55,25 @@ def harvest(forecasts, harvester):
     
     """
     return [harvester(forecast) for forecast in forecasts]
+
+
+def completeness(summaries, grammar):
+    """
+    from forecast import *
+    from cfg import Cfg
+    forecasts = read_forecast_dir('data/tmp')
+    bgrammar = Cfg.from_file('weather.cfg').binarize()
+    summaries = harvest(forecasts, hourly_summary)
+    completeness(summaries, bgrammar)
+
+    """
+    parsed = 0
+    nonempty = [s for s in summaries if s is not None]
+    for summary in nonempty:
+        summary = summary.lower()
+        if cky_parse(summary, grammar):            
+            parsed += 1
+        else:
+            print(summary)
+    return parsed, len(nonempty)
+    
