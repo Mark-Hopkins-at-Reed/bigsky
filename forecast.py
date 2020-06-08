@@ -2,6 +2,8 @@ import json
 from os import listdir
 from os.path import isfile, join
 from cky import cky_parse
+import pandas as pd
+import numpy as np
 
 def read_forecast(filename):
     """Reads the forecast JSON into a dictionary."""
@@ -26,6 +28,57 @@ def read_forecast_dir(directory):
             print('WARNING(Not valid JSON): {}'.format(file))
     return forecasts
             
+def hourly_data_and_summary(forecast):
+    if 'hourly' in forecast and 'data' in forecast['hourly'] and 'summary' in forecast['hourly']:
+        return (forecast['hourly']['summary'], forecast['hourly']['data'])
+    else:
+        return None
+
+def compile_hourly_data(forecasts, ignore_fields = ['time', 'summary', 'icon',
+                                                    'unix_time']):
+    def safe_lookup(dictionary, key):
+        if key in dictionary:
+            return dictionary[key]
+        else:
+            return None
+    
+    datas = harvest(forecasts, hourly_data_and_summary)
+    results = []
+    assert(len(datas) > 0)
+    for (summary, data) in datas:
+        result = {'response': summary}
+        for feature in data[0]:
+            result[feature] = [safe_lookup(datum, feature) for datum in data]
+        results.append(result)            
+    headings = ['response', 'time']
+    for key in results[0]:
+        if key not in headings and key not in ignore_fields:
+            num_entries = len(results[0][key])
+            for i in range(num_entries):
+                headings.append('{}__{}'.format(key, i))
+    rows = []
+    for result in results:
+        row = []
+        for heading in headings:
+            if '__' in heading:
+                (feature, index) = heading.split('__')
+                try: 
+                    row.append(result[feature][int(index)])
+                except KeyError:
+                    row.append(None)
+            else:
+                row.append(result[heading])
+        rows.append(row)
+    df = pd.DataFrame(np.array(rows), columns = headings)
+    return df
+
+def remap_response(df, keyword):
+    for row in range(len(df)):
+        if keyword in df.at[row, 'response'].lower():
+            df.at[row, 'response'] = 1
+        else:
+            df.at[row, 'response'] = 0
+
 
 def minutely_summary(forecast):
     """Extracts the 'minutely' summary from a forecast dictionary."""
