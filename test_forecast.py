@@ -3,7 +3,7 @@ from forecast import read_forecast_dir, harvest
 from forecast import minutely_summary, hourly_summary, daily_summary
 
 
-class TestWordnet(unittest.TestCase):
+class TestForecast(unittest.TestCase):
     
     def setUp(self):
         self.forecasts = read_forecast_dir('data/examples')
