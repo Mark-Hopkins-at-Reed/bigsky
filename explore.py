@@ -25,5 +25,4 @@ def time_plot(forecasts, field):
         headings.append(forecast['summary'])
     field_values = np.array(field_values).transpose()
     data = pd.DataFrame(field_values, x_axis, columns=headings)
-    
     sns.lineplot(data=data, palette="tab10", linewidth=2.5)
