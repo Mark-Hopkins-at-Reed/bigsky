@@ -1,4 +1,4 @@
-from forecast import read_forecast_dir
+from bigsky.forecast import read_forecast_dir
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -6,7 +6,7 @@ import seaborn as sns
 forecasts = read_forecast_dir('data/examples')
 
 humid = forecasts[0]['hourly']
-partly_cloudy = forecasts[1]['hourly']
+partly_cloudy = forecasts[2]['hourly']
 rain = forecasts[3]['hourly']
 mostly_cloudy = forecasts[8]['hourly']
 
