@@ -1,6 +1,4 @@
-
-from cfg import Terminal, Nonterminal
-
+from bigsky.cfg import Terminal, Nonterminal
 from sacremoses import MosesTokenizer
 
 
