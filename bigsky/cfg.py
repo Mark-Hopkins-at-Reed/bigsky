@@ -152,6 +152,7 @@ class Cfg:
     def __str__(self):
         return '\n'.join([str(rule) for rule in self.rules])
     
+    @staticmethod
     def from_file(filename):
         with open(filename, 'r') as reader:
             rules = [CfgRule.from_string(line) for line in reader]
