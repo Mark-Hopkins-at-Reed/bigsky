@@ -1,5 +1,7 @@
 from bigsky.cfg import Terminal, Nonterminal
 from sacremoses import MosesTokenizer
+from queue import Queue
+import copy
 
 def can_be_nonterminal(nonterminal, nts):
     """returns whether a given nonterminal is in a set of nonterminals"""
@@ -38,13 +40,13 @@ def cky_parse(sent, grammar):
     chart = cky_alg(words, grammar)
     return can_be_nonterminal(Nonterminal("S"),                      # if I can make a sentence, return it
                             chart[0][len(words)])               
-def cky_tree(sent, grammar):
+def cky_tree(sent, grammar, split_trees=False):
     """Returns the parse tree(s) of a given sentence and CFG"""
 
     def recursive_helper(target, i, j):
         """Builds the tree that turns words i to j into a target nonterminal"""
         if j-i <= 1:                                                            # base case: looking at one word
-            return words[i]
+            return (str(target),words[i])
         nts = list(chart[i][j])
         ans_trees = []
         rules = grammar.get_rules_with_lhs(target)
@@ -53,15 +55,50 @@ def cky_tree(sent, grammar):
                 for r in rules:                                                 # go through all the rules that can make the target
                     if (can_be_nonterminal(r.rhs[0], chart[i][nt[1]]) and       # and if I can make the constituents
                         can_be_nonterminal(r.rhs[1], chart[nt[1]][j])):
-                        ans_trees.append((recursive_helper(r.rhs[0], i, nt[1]), # add the constituent trees to this list
+                        ans_trees.append((str(target), 
+                                        recursive_helper(r.rhs[0], i, nt[1]),   # add the constituent trees to this list
                                         recursive_helper(r.rhs[1], nt[1],j)))   # of possible trees
         return ans_trees
 
     words =  MosesTokenizer().tokenize(sent)
     chart = cky_alg(words, grammar)
-    if not can_be_nonterminal(Nonterminal("S"),                      # first, make sure there _is_ a tree
+    if not can_be_nonterminal(Nonterminal("S"),                     # first, make sure there _is_ a tree
                             chart[0][len(words)]):              
         return False
-    trees = recursive_helper(Nonterminal("S"), 0, len(words))
-    return trees
+    trees = recursive_helper(Nonterminal("S"), 0, len(words))       # treeificate with that function
+    if not split_trees:
+        return trees
+    # and now I have a list of trees whose subtrees may include lists of subtrees
+    # it would be nice if those were all separated - ie if there are 2 possible
+    # parses of a given phrase, we then create two entire trees. I think this is going 
+    # to be a rather intensive process if we have really ambiguous sentences so I 
+    # have provided a turn-off flag (split_trees)
+    def find_ambiguity(start):
+        """Searches for an ambiguity and returns a pointer to it"""
+        if len(start) > 1 and type(start) == list:                          # If this list is long, found it
+            return start
+        if len(start[0]) <= 2:                      # If the next thing is a terminal, cant find
+            return False
+        return (find_ambiguity(start[0][1]) or      # else, check the left and the right of my one thing
+                find_ambiguity(start[0][2]))
+
+    ans_trees = []                          # list of unambiguous trees
+    wq = Queue()                      # work queue
+    wq.put(trees)                           # put ambiguous tree in it
+    while not wq.empty():                   # while there is something in the queue
+        t = wq.get()                        # dequeue, t is pointer to head
+        x = find_ambiguity(t)               # find an ambiguity if there is one
+        if not x:                           # if not, this tree is done
+            ans_trees.append(t)
+        else:                               # if yes, its TREE SPLITTIN' TIME!!
+            n = len(x)                      # how many things am I gonna need to make?
+            for i in range(n):              # go through each option
+                u = copy.deepcopy(t)           # make a deep copy of t
+                y = find_ambiguity(u)       # since find_amb. is deterministic, y should point to the same place as x but in u
+                for j in range(n)[::-1]:    # get rid of the other options. I think just splicing would fail bc 
+                    if j == i: continue     # pointers so I'm using list method pop
+                    y.pop(j)
+                wq.put(u)                   # then add this new tree with the removed ambiguity back onto the queue in case still ambig.
+    return ans_trees                        # potentially needless worrying about duplicates
+
         
