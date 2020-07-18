@@ -2,6 +2,7 @@ from bigsky.cfg import Terminal, Nonterminal
 from sacremoses import MosesTokenizer
 from queue import Queue
 import copy
+import json
 
 def can_be_nonterminal(nonterminal, nts):
     """returns whether a given nonterminal is in a set of nonterminals"""
@@ -40,9 +41,13 @@ def cky_parse(sent, grammar):
     chart = cky_alg(words, grammar)
     return can_be_nonterminal(Nonterminal("S"),                      # if I can make a sentence, return it
                             chart[0][len(words)])               
-def cky_tree(sent, grammar, split_trees=False):
+
+def cky_tree(sent, grammar):
     """Returns the parse tree(s) of a given sentence and CFG"""
 
+    # is this exponential time? nobody likes that :(
+    # determine whether it is, and if so, then try a bottom-up (rather than
+    # top-down approach)
     def recursive_helper(target, i, j):
         """Builds the tree that turns words i to j into a target nonterminal"""
         if j-i <= 1:                                                            # base case: looking at one word
@@ -66,8 +71,11 @@ def cky_tree(sent, grammar, split_trees=False):
                             chart[0][len(words)]):              
         return False
     trees = recursive_helper(Nonterminal("S"), 0, len(words))       # treeificate with that function
-    if not split_trees:
-        return trees
+    return trees
+    
+def enumerate_cky_trees(sent, grammar):
+    trees = cky_tree(sent, grammar)
+    
     # and now I have a list of trees whose subtrees may include lists of subtrees
     # it would be nice if those were all separated - ie if there are 2 possible
     # parses of a given phrase, we then create two entire trees. I think this is going 
@@ -101,4 +109,19 @@ def cky_tree(sent, grammar, split_trees=False):
                 wq.put(u)                   # then add this new tree with the removed ambiguity back onto the queue in case still ambig.
     return ans_trees                        # potentially needless worrying about duplicates
 
+def reformat_tree(t):
+    """
+    Reformats the output of the CKY parser for the following syntax tree viewer:
         
+    http://ironcreek.net/syntaxtree/
+    
+    """
+    s = json.dumps(t)
+    s = s.replace('","', '###')
+    s = s.replace('"', '')
+    s = s.replace(',','')
+    s = s.replace('[[','[')
+    s = s.replace(']]',']')
+    s = s.replace('_','')
+    s = s.replace('###', ',')
+    return s      
