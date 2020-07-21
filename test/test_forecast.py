@@ -51,21 +51,21 @@ class TestForecast(unittest.TestCase):
         fdata = ForecastData.from_hourly_data(self.forecasts)
         fdata = fdata.remap_response('rain')
         response_vec, domain_size = fdata.select_response('response')
-        expected = tensor([0, 0, 0, 1, 1, 0, 0, 0, 0, 0])                    
+        expected = tensor([0, 0, 0, 0, 1, 0, 0, 1, 0, 0])    
         assert torch.all(torch.eq(expected, response_vec))
         assert domain_size == 2        
         evidence_vec = fdata.select(['ozone__0', 'ozone__1'])
         evidence_vec = torch.round(10000 * evidence_vec) / 10000
-        expected = tensor([ [0.2641, 0.2647],
-                            [0.3223, 0.3227],
-                            [0.3241, 0.3222],
-                            [0.3042, 0.3026],
-                            [0.3296, 0.3300],
-                            [0.3223, 0.3227],
+        expected = tensor([ [0.3223, 0.3227],
                             [0.3223, 0.3227],
                             [0.3223, 0.3227],
                             [0.3237, 0.3241],
-                            [0.3223, 0.3227]])
+                            [0.3042, 0.3026],
+                            [0.2641, 0.2647],
+                            [0.3223, 0.3227],
+                            [0.3296, 0.3300],
+                            [0.3223, 0.3227],
+                            [0.3241, 0.3222]])
         assert torch.all(torch.eq(expected, evidence_vec))
         
 
