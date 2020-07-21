@@ -4,6 +4,8 @@ from queue import Queue
 import copy
 import json
 
+SAFE = True
+
 def can_be_nonterminal(nonterminal, nts):
     """returns whether a given nonterminal is in a set of nonterminals"""
     ntl = list(nts)
@@ -91,7 +93,7 @@ def enumerate_cky_trees(sent, grammar):
                 find_ambiguity(start[0][2]))
 
     ans_trees = []                          # list of unambiguous trees
-    wq = Queue()                      # work queue
+    wq = Queue()                            # work queue
     wq.put(trees)                           # put ambiguous tree in it
     while not wq.empty():                   # while there is something in the queue
         t = wq.get()                        # dequeue, t is pointer to head
@@ -101,13 +103,77 @@ def enumerate_cky_trees(sent, grammar):
         else:                               # if yes, its TREE SPLITTIN' TIME!!
             n = len(x)                      # how many things am I gonna need to make?
             for i in range(n):              # go through each option
-                u = copy.deepcopy(t)           # make a deep copy of t
+                u = copy.deepcopy(t)        # make a deep copy of t
                 y = find_ambiguity(u)       # since find_amb. is deterministic, y should point to the same place as x but in u
                 for j in range(n)[::-1]:    # get rid of the other options. I think just splicing would fail bc 
                     if j == i: continue     # pointers so I'm using list method pop
                     y.pop(j)
                 wq.put(u)                   # then add this new tree with the removed ambiguity back onto the queue in case still ambig.
     return ans_trees                        # potentially needless worrying about duplicates
+
+def debinarize(tree, grammar):
+    '''takes the non-binarized form of the parsing grammar to make the tree a non-binary tree'''
+    def only_real_rules(subtree):
+        '''recursively gets rid of all nonterminals that dont exist in the original grammar'''
+        if type(subtree) == str:                                                # Base Case: strings are always leaves
+            return [None, subtree]
+        if type(subtree) == list:                                               # at this point there should be no ambiguities so 
+            subtree = subtree[0]                                                # these lists are pointless
+        partial_result = None
+        if len(grammar.get_rules_with_lhs(Nonterminal(subtree[0]))) > 0:        # Is there a rule for this node in the grammar?
+            partial_result = [subtree[0]] + [only_real_rules(subtree[i])        # if so, leave this and recurse downward
+                            for i in range(1, len(subtree))]
+        else:
+            partial_result = [None] + [only_real_rules(subtree[i])              # if not, label this NONE and recurse down
+                            for i in range(1, len(subtree))]
+        result = [partial_result[0]]                                            # stick the label on the front of this list
+        for i in range(1, len(partial_result)):                                 # for sub-results
+            if partial_result[i][0] == None:                                    # if the sub-result is a non-node
+                result += partial_result[i][1:]                                 # concatenate that list
+            else:
+                result.append(partial_result[i])                                # otherwise, just add the REAL node
+        return result
+
+    def unaries(subtree):
+        '''
+        Recursively adds in unaries where they need to be
+
+        I assumed that only one rule in the grammar will create a given string/phrase combo
+        But I think I'm allowed to make that assumption. Especially since we control the CFG
+        Then to do this we can easily backtrack. I DID provide error handling in case of this, 
+        in which case this algorithm will be broken and probably some kind of dynamic programming
+        thing will have to be implemented.
+        '''
+        if type(subtree) == str:                                                # Base case, strings are boring
+            return subtree
+        target = Nonterminal(subtree[0])                                        # save the target node
+        rhs_rule = None
+        rhs = [Terminal(w) if type(w)==str                                      # figure out what a rule.rhs would look like
+                        else Nonterminal(w[0]) 
+                        for w in subtree[1:]]
+        target_rules = grammar.get_rules_with_lhs(target)                       # get all the rules that make the target
+        try:
+            rhs_rule = grammar.get_rules_with_rhs(rhs)[0]                       # get the rules that make the interior
+        except:
+            raise KeyError("No rule with \"" + "".join(subtree[1:]) 
+                                + "\" as right-hand side")
+        subtree[0] = str(rhs_rule.lhs)                                          # replace start node w what DOES make rhs
+        result = [subtree[0]] + [unaries(p) for p in subtree[1:]]               # recurse downward
+        while rhs_rule not in target_rules:                                     # while I am not making the target
+            try:
+                rhs_rule = grammar.get_rules_with_rhs((rhs_rule.lhs,))[0]       # get the rules that make the new interior
+            except:                                                             # (which is the thing that made the last interior)
+                raise KeyError("No rule with \"" + "".join(subtree[1:])
+                                + "\" as right-hand side")
+            result = [str(rhs_rule.lhs), result]                                # step result up
+        return result   
+    
+    orr = only_real_rules(tree)
+    try:
+        return unaries(orr)
+    except KeyError:
+        print("Failed to remove unaries")
+        return orr
 
 def reformat_tree(t):
     """

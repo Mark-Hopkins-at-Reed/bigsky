@@ -41,6 +41,12 @@ class CfgRule:
 
     def __str__(self):
         return "{} -> {}".format(self.lhs, ' '.join([str(x) for x in self.rhs]))
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        return str(self) == str(other)
                 
     def binarize(self):
         """Assuming no unary productions for now."""
@@ -111,7 +117,6 @@ class Cfg:
         
     def get_rules_with_rhs(self, rhs):
         return [rule for rule in self.rules if tuple(rule.rhs) == tuple(rhs)]        
-
 
     def binarize(self): # TODO: make unique
         new_rules = []
