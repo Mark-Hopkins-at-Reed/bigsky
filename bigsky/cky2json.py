@@ -21,11 +21,11 @@ def flatten_parens(subtree):
             break
     measure = { 'unit': "".join(x[-1][1:]) }
     if len(x) == 5:
-        measure['amt'] = (int(x[3][1]) + int(x[1][1]))/2
-        measure['error'] = (int(x[3][1]) - int(x[1][1]))/2
+        measure['min'] = int(x[1][1])
+        measure['max'] = int(x[3][1])
     else:
-        measure['amt'] = int(x[2][1])
-        measure['error'] = .5
+        measure['max'] = int(x[2][1])
+        measure['min'] = 0
     result['measure'] = measure
     return result
 
@@ -72,9 +72,9 @@ def mold_weather(w):
                 degree: "heavy/moderate/light"
                 probability: "high/medium/low"
                 measure: {
-                    amt: #number
+                    min: #number
+                    max: #number
                     unit: "in./cm."
-                    error: #number
                 }
                 snow_chance: bool
             }
@@ -130,5 +130,4 @@ def jsonify_tree(tree):
 def extract_from_sentence(sentence, grammar, cnf_grammar=None):
     '''Turn a NL weather report into possible data-friendly json interpretations'''
     trees = make_trees(sentence, grammar, cnf_grammar)
-    print(len(trees))
     return [jsonify_tree(t) for t in trees]

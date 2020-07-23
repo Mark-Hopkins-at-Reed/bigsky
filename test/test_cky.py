@@ -1,6 +1,8 @@
 import unittest
 from bigsky.cfg import Cfg, Nonterminal
-from bigsky.cky import enumerate_cky_trees, cky_alg, cky_tree, debinarize
+from bigsky.cky import enumerate_cky_trees, cky_alg, cky_tree, debinarize, make_trees
+from bigsky.cky2json import jsonify_tree, extract_from_sentence
+from bigsky.json2cky import treeify_weather, stringify_tree
 
 class TestCky(unittest.TestCase):
     
@@ -12,7 +14,15 @@ class TestCky(unittest.TestCase):
                    "windy and windy and windy tonight.",
                    "windy and possible light flurries (with a chance of 10 – 3 cm. of snow) starting tomorrow, continuing until tonight and this morning.",
                    "humid until tonight.",
-                   "possible heavy snow starting later this morning, continuing until tonight."]        
+                   "possible heavy snow starting later this morning, continuing until tonight."]  
+        self.data = [
+            {'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'cloud', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'humid', 'degree': 'moderate', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'rain', 'degree': 'light', 'probability': 'medium', 'measure': 'UNKNOWN', 'snow_chance': False},
+            {'type': 'rain', 'degree': 'heavy', 'probability': 'high', 'measure': {'max': 10, 'unit': 'in.', 'min': 6}, 'snow_chance': True},
+            {'type': 'snow', 'degree': 'heavy', 'probability': 'high', 'measure': {'max': 2, 'unit': 'in.', 'min': 0}, 'snow_chance': False}
+        ]      
         self.OG = Cfg.from_file("data/cfgs/weather.cfg")            # Original Grammar = OG
         self.g = self.OG.binarize()
     
@@ -99,7 +109,28 @@ class TestCky(unittest.TestCase):
                                 ['WEATHER', 'windy'], 'and', ['WEATHER', 'mostly', 'cloudy']],
                             ['TIME', ['BTIME', 'tonight']],
                         '.']
-                            
-        
+    
+    def test_jsonify1(self):
+        data = extract_from_sentence(self.ss[1], self.OG, self.g)
+        assert sorted(data, key=(lambda x: str(x))) == [[{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'cloud', 'degree': 'moderate', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]]
+
+    def test_jsonify2(self):
+        data = extract_from_sentence(self.ss[4], self.OG, self.g)
+        assert sorted(data, key=(lambda x: str(x))) == [[{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}], 
+                                                       [{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}]]
+    
+    def test_treeify1(self):
+        result = stringify_tree(treeify_weather(self.data[4]))
+        assert result == "heavy rain (with a chance of 6 – 10 in. of snow) "
+    
+    def test_treeify2(self):
+        assert stringify_tree(treeify_weather(self.data[3])) == "possible drizzle "
+
+    def test_treeify3(self):
+        assert stringify_tree(treeify_weather(self.data[0])) == "overcast "
+
 if __name__ == "__main__":
 	unittest.main()

@@ -28,16 +28,22 @@ output should look like this
 ]
 or 
 [WEATHER, "mostly", "cloudy"]
+
+There is no longer such thing as a "heavy drizzle" or a "light rain". Same goes for the snow variants.
+Instead, "heavy drizzle" is just "rain" and "light rain" is "drizzle".
+I'm not sure if that is going to be a problem? The CFG can generate these things, but idk if we see them.
+I believe that the CFG does overgenerate a bit.
+
+Again, this is hardcoded given the CFG. So this stuff should be highly open to change
 '''
 
 def treeify_measure(js):
-    amt, err = js['amt'], js['error']
-    lo = amt - err
-    hi = amt + err
-    if err <= .5 and abs(round(hi)-hi) <= .001 and abs(round(lo)-lo) <= .001:
+    hi, lo = js['max'], js['min']
+    if lo == 0:
+        # only want a ~ for low error and also not something like "(n) - (n+1)"
         return ['MEASURE', 
                 '&lt;', 
-                ['NUM', str(round(amt))], 
+                ['NUM', str(round(hi))], 
                 ['UNIT', js['unit']]
             ]
     else:
@@ -54,7 +60,7 @@ def treeify_precip(js):
     mods = []
     if prb == 'medium':
         mods.append('possible')
-    if deg != 'moderate':
+    if deg == 'heavy':
         mods.append(deg)
     if len(mods) == 1:
         result.append(['PRECIPMODIFIERS', ['PRECIPMODIFIER', mods[0]]])
@@ -102,3 +108,13 @@ def treeify_weather(js):
         return ['WEATHER', 'clear']
     else:
         raise ValueError(t, 'is not a supported kind/name of weather')
+
+
+def stringify_tree(tree):
+    result = ''
+    for w in tree[1:]:
+        if type(w) == str:
+            result += w + ' '
+        else:
+            result += stringify_tree(w)
+    return result.replace(' ,',',').replace(' . ','.').replace('( ','(').replace(' )',')')
