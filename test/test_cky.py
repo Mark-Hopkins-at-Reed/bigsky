@@ -1,6 +1,9 @@
 import unittest
 from bigsky.cfg import Cfg, Nonterminal
-from bigsky.cky import enumerate_cky_trees, cky_alg, cky_tree, debinarize
+from bigsky.cky import enumerate_cky_trees, cky_alg, cky_tree, debinarize, make_trees
+from bigsky.cky2json import jsonify_tree, extract_from_sentence, find_weather_types
+from bigsky.cky2json import mold_weather
+from bigsky.json2cky import treeify_weather, stringify_tree
 
 class TestCky(unittest.TestCase):
     
@@ -12,7 +15,15 @@ class TestCky(unittest.TestCase):
                    "windy and windy and windy tonight.",
                    "windy and possible light flurries (with a chance of 10 – 3 cm. of snow) starting tomorrow, continuing until tonight and this morning.",
                    "humid until tonight.",
-                   "possible heavy snow starting later this morning, continuing until tonight."]        
+                   "possible heavy snow starting later this morning, continuing until tonight."]  
+        self.data = [
+            {'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'cloud', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'humid', 'degree': 'moderate', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
+            {'type': 'rain', 'degree': 'light', 'probability': 'medium', 'measure': 'UNKNOWN', 'snow_chance': False},
+            {'type': 'rain', 'degree': 'heavy', 'probability': 'high', 'measure': {'max': 10, 'unit': 'in.', 'min': 6}, 'snow_chance': True},
+            {'type': 'snow', 'degree': 'heavy', 'probability': 'high', 'measure': {'max': 2, 'unit': 'in.', 'min': 0}, 'snow_chance': False}
+        ]      
         self.OG = Cfg.from_file("data/cfgs/weather.cfg")            # Original Grammar = OG
         self.g = self.OG.binarize()
     
@@ -99,7 +110,113 @@ class TestCky(unittest.TestCase):
                                 ['WEATHER', 'windy'], 'and', ['WEATHER', 'mostly', 'cloudy']],
                             ['TIME', ['BTIME', 'tonight']],
                         '.']
-                            
+    
+    def test_find_weather_types1(self):
+        types = find_weather_types(['S',
+                                    ['WEATHER', ['WEATHER', 'humid'], 'and', ['WEATHER', 'clear']],
+                                    ['TIME', ['BTIME', 'tonight']],
+                                    '.'])
+        assert types == ['humid', 'clear']
+
+    def test_find_weather_types2(self):
+        types = find_weather_types(['S', 
+                                    ['WEATHER', ['PRECIP', ['PRECIPNOUN', 'rain']]], 
+                                    ['TIME', ['BTIME', 'tonight']], '.'])
+        assert types == [{'modifiers': [], 'noun': 'rain'}]
+    
+    def test_find_weather_types3(self):
+        types = find_weather_types(['S', 
+                                    ['WEATHER', 'partly', 'cloudy'], 
+                                    ['TIME', ['BTIME', 'tonight']], '.'])
+        assert types == ['partly cloudy']
         
+        
+    def test_mold_weather1(self):
+        result = mold_weather({'modifiers': ['heavy'], 'noun': 'rain'})
+        assert result == {'type': 'rain',
+                          'degree': 'heavy',
+                          'probability': 'high',
+                          'measure': 'UNKNOWN',
+                          'snow_chance': False}
+
+    def test_mold_weather2(self):
+        result = mold_weather({'modifiers': ['possible'], 'noun': 'rain'})
+        assert result == {'type': 'rain',
+                          'degree': 'moderate',
+                          'probability': 'medium',
+                          'measure': 'UNKNOWN',
+                          'snow_chance': False}
+    
+    def test_mold_weather3(self):
+        result = mold_weather('clear')
+        assert result == {'type': 'clear',
+                          'degree': 'N/A',
+                          'probability': 'high',
+                          'measure': 'N/A',
+                          'snow_chance': False}
+
+    def test_mold_weather4(self):
+        result = mold_weather('partly cloudy')
+        assert result == {'type': 'cloud',
+                          'degree': 'light',
+                          'probability': 'high',
+                          'measure': 'N/A',
+                          'snow_chance': False}
+    
+    def test_mold_weather5(self):
+        result = mold_weather({'modifiers': ['possible', 'light'],
+                               'noun': 'flurries',
+                               'parens': {'snow_chance': True,
+                               'measure': {'unit': 'cm.', 'min': 4, 'max': 6}}})
+        assert result == {'type': 'snow',
+                          'degree': 'light',
+                          'probability': 'medium',
+                          'measure': {'unit': 'cm.', 'min': 4, 'max': 6},
+                          'snow_chance': True}
+    
+    def test_make_trees(self):
+        trees = make_trees("clear tonight.", self.OG)
+        assert len(trees) == 1
+        assert trees[0] == ['S', 
+                            ['WEATHER', 'clear'], 
+                            ['TIME', ['BTIME', 'tonight']], '.']
+    
+    def test_jsonify1(self):
+        data = extract_from_sentence(self.ss[1], self.OG, self.g) # "windy and mostly cloudy tonight."
+        assert sorted(data, key=(lambda x: str(x))) == [[{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'cloud', 'degree': 'moderate', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]]
+
+    def test_jsonify2(self):
+        data = extract_from_sentence(self.ss[4], self.OG, self.g) 
+        assert sorted(data, key=(lambda x: str(x))) == [[{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}], 
+                                                       [{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}]]
+    
+    def test_treeify1(self):
+        weather = {'type': 'rain', 
+                   'degree': 'heavy', 
+                   'probability': 'high', 
+                   'measure': {'max': 10, 'unit': 'in.', 'min': 6}, 
+                   'snow_chance': True}
+        result = stringify_tree(treeify_weather(weather))
+        assert result == "heavy rain (with a chance of 6 – 10 in. of snow) "
+    
+    def test_treeify2(self):
+        weather = {'type': 'rain', 
+                   'degree': 'light', 
+                   'probability': 'medium', 
+                   'measure': 'UNKNOWN', 
+                   'snow_chance': False}
+        assert stringify_tree(treeify_weather(weather)) == "possible drizzle "
+
+    def test_treeify3(self):
+        weather = {'type': 'cloud', 
+                   'degree': 'heavy', 
+                   'probability': 'high', 
+                   'measure': 'N/A',
+                   'snow_chance': False}
+        assert stringify_tree(treeify_weather(weather)) == "overcast "
+
 if __name__ == "__main__":
 	unittest.main()

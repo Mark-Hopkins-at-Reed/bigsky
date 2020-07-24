@@ -191,3 +191,18 @@ def reformat_tree(t):
     s = s.replace('_','')
     s = s.replace('###', ',')
     return s      
+
+def make_trees(sentence, orig_grammar, cnf_grammar=None):
+    """
+    Parses the sentence and returns a list of CKY trees, e.g:
+
+        In : make_trees("clear tonight.", grammar)
+        Out: [['S', ['WEATHER', 'clear'], ['TIME', ['BTIME', 'tonight']], '.']]
+        
+    """
+    if cnf_grammar == None:
+        cnf_grammar = orig_grammar.binarize()
+    trees = enumerate_cky_trees(sentence, cnf_grammar)
+    for i in range(len(trees)):
+        trees[i] = debinarize(trees[i], orig_grammar)
+    return trees
