@@ -61,8 +61,7 @@ def find_weather_types(tree):
     elif tree[0] == 'WEATHER':
         return [" ".join(tree[1:])]
     else:
-        # should not get here
-        return ["uhhhhh"]
+        raise Exception("Incorrect tree format: {}".format(tree))
 
 def mold_weather(w):
     ''' Take a WEATHER thingy as created from the tree in the above stuff, 
