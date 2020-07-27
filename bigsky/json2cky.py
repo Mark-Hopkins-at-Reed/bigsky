@@ -60,7 +60,7 @@ def treeify_precip(js):
     mods = []
     if prb == 'medium':
         mods.append('possible')
-    if deg == 'heavy':
+    elif deg != 'extra-light':
         mods.append(deg)
     if len(mods) == 1:
         result.append(['PRECIPMODIFIERS', ['PRECIPMODIFIER', mods[0]]])
@@ -69,7 +69,7 @@ def treeify_precip(js):
                         ['PRECIPMODIFIER', mods[0]], 
                         ['PRECIPMODIFIERS', ['PRECIPMODIFIER', mods[1]]]
                     ])    
-    noun = ('drizzle' if typ == 'rain' else 'flurries') if deg == 'light' else typ
+    noun = ('drizzle' if typ == 'rain' else 'flurries') if deg == 'extra-light' else typ
     result.append(['PRECIPNOUN', noun])
     if meas == 'UNKNOWN':
         return result  

@@ -82,7 +82,7 @@ def mold_weather(w):
     ans = {}
     if type(w) == dict:
         ans['type'] = 'snow' if w['noun'] in 'snow$flurries' else 'rain'
-        intensity = 0 if w['noun'] in 'rain$snow' else -1
+        intensity = 0 if w['noun'] in 'rain$snow' else -2
         probability = False
         for m in w['modifiers']:
             if m == 'heavy':
@@ -91,9 +91,14 @@ def mold_weather(w):
                 intensity -= 1
             elif m == 'possible':
                 probability = True
-        ans['degree'] = ('heavy' if intensity > 0 else 
-                            ('light' if intensity < 0 else 
-                                'moderate'))
+        if intensity <= -2:
+            ans['degree'] = 'extra-light'
+        elif intensity == -1:
+            ans['degree'] = 'light'
+        elif intensity == 0:
+            ans['degree'] = 'moderate'
+        else:
+            ans['degree'] = 'heavy'
         ans['probability'] = 'medium' if probability else 'high'
         ans['measure'] = w.get('parens', {}).get('measure', "UNKNOWN")
         ans['snow_chance'] = w.get('parens', {}).get('snow_chance', False)
