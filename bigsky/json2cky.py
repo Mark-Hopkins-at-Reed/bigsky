@@ -60,7 +60,7 @@ def treeify_precip(js):
     mods = []
     if prb == 'medium':
         mods.append('possible')
-    elif deg != 'extra-light':
+    if deg == 'heavy' or deg == 'light':
         mods.append(deg)
     if len(mods) == 1:
         result.append(['PRECIPMODIFIERS', ['PRECIPMODIFIER', mods[0]]])
