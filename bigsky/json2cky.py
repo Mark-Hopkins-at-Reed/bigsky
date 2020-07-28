@@ -109,6 +109,130 @@ def treeify_weather(js):
     else:
         raise ValueError(t, 'is not a supported kind/name of weather')
 
+TIME_LABELS = [
+    (0, 5,   'night'),
+    (5, 12,  'morning'),
+    (12, 17, 'afternoon'),
+    (17, 22, 'evening'),
+    (22, 24, 'night')    
+]
+
+def stringify_hour(hr):
+    while hr > 24:
+        hr -= 24
+    ans = []
+    for k in TIME_LABELS:
+        if hr <= k[1] and hr >= k[0]:
+            ans.append(k[2])
+    return ans
+
+def treeify_interval(intvl, now):
+    start  = stringify_hour(intvl[0])[-1]
+    end    = stringify_hour(intvl[1])[0]
+    nowstr = stringify_hour(now)[-1]
+    ans = []
+    if start == end and not intvl[1] - intvl[0] > 7:
+        if intvl[0] > 29:
+            ans = ['TIME', ['BTIME', 'tomorrow', ['TIMEWORD', start]]]
+        elif intvl[0] == now:
+            if start != 'night':
+                ans = ['TIME', 'until', ['BTIME', 'later', 'this', start]]
+            else:
+                ans = ['TIME', 'until', ['BTIME', 'later', 'tonight']]
+        elif start == nowstr:
+            if start != 'night':
+                ans = ['TIME', ['BTIME', 'later', 'this', start]]
+            else:
+                ans = ['TIME', ['BTIME', 'later', 'tonight']]
+        else:
+            ans = ['TIME',['BTIME', 'in', 'the', ['TIMEWORD', start]]]
+    else:
+        if intvl[0] == now:
+            if intvl[1] > 29:
+                ans = ['TIME', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
+            elif end != 'night':
+                ans = ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
+            else:
+                ans = ['TIME', 'until', ['BTIME', 'tonight']]
+        elif start == nowstr:
+            if intvl[1] > 29:
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
+            elif end != 'night':
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
+            else:
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'tonight']]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'later', 'tonight']]
+        elif intvl[0] < 29:
+            if intvl[1] > 29:
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
+            elif end != 'night':
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
+            else:
+                if start != 'night':
+                    ans = ['TIME', 'starting', ['BTIME', 'this', ['TIMEWORD', start]], ',',
+                            'continuing', 'until', ['BTIME', 'tonight']]
+                else:
+                    ans = ['TIME', 'starting', ['BTIME', 'tonight'], ',',
+                            'continuing', 'until', ['BTIME', 'later', 'tonight']]
+        else:
+            ans = ['TIME', ['BTIME', 'tomorrow']]
+    return ans
+
+def treeify_time(intervals, now):
+    '''
+    times = set()
+    for interval in intervals:
+        for i in interval:
+            if i in times:
+                times.remove(i)
+            else:
+                times.add(i)
+    times = sorted(list(times))
+    timestrs = [stringify_hour(hr%24) for hr in times]
+    text_ints = []
+    for i in range(0, len(timestrs), 2):
+        s, t = timestrs[i], timestrs[i+1]
+        intvl = {'start': {'word':s, 'mods':[]}, 'end': {'word':t, 'mods':[]}}
+        if times[i] > 24:
+            intvl['start']['mods'].append('tomorrow')
+        if times[i+1] > 24:
+            intvl['end']['mods'].append('tomorrow')
+        if  i > 0 and timestrs[i-1] == s:
+            intvl['start']['mods'].append('later')
+        text_ints.append(intvl)
+
+    if times[0] == now:
+        timestrs[0] = 'now'
+    '''
+    trees = [treeify_interval(intvl, now) for intvl in intervals]
+    return trees
+
+def treeify(js):
+    return ['S', treeify_weather(js['weather']), treeify_time(js['time'], js['now'])]
 
 def stringify_tree(tree):
     result = ''
