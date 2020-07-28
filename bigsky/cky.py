@@ -77,6 +77,8 @@ def cky_tree(sent, grammar):
     
 def enumerate_cky_trees(sent, grammar):
     trees = cky_tree(sent, grammar)
+    if not trees:
+        return []
     
     # and now I have a list of trees whose subtrees may include lists of subtrees
     # it would be nice if those were all separated - ie if there are 2 possible

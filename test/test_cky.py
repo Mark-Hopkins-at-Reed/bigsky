@@ -16,6 +16,16 @@ class TestCky(unittest.TestCase):
                    "windy and possible light flurries (with a chance of 10 – 3 cm. of snow) starting tomorrow, continuing until tonight and this morning.",
                    "humid until tonight.",
                    "possible heavy snow starting later this morning, continuing until tonight."]  
+        # a weather event looks like: 
+        #  {'time': {'start': 6, 'end': 10, 'now': 3},
+        #   'weather': [{'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]}
+        #
+        # a weather event looks like: 
+        #  {'now': 3,
+        #   'forecasts':
+        #      [{'time': {'start': 6, 'end': 10, 'now': 3},
+        #        'weather': [{'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]}]
+        
         self.data = [
             {'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
             {'type': 'cloud', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
@@ -168,11 +178,11 @@ class TestCky(unittest.TestCase):
                                'noun': 'flurries',
                                'parens': {'snow_chance': True,
                                'measure': {'unit': 'cm.', 'min': 4, 'max': 6}}})
-        assert result == {'type': 'snow',
-                          'degree': 'light',
-                          'probability': 'medium',
-                          'measure': {'unit': 'cm.', 'min': 4, 'max': 6},
-                          'snow_chance': True}
+        assert result == {'type': 'snow', 
+                        'degree': 'extra-light', 
+                        'probability': 'medium', 
+                        'measure': {'unit': 'cm.', 'min': 4, 'max': 6}, 
+                        'snow_chance': True}     
     
     def test_make_trees(self):
         trees = make_trees("clear tonight.", self.OG)
@@ -189,9 +199,9 @@ class TestCky(unittest.TestCase):
     def test_jsonify2(self):
         data = extract_from_sentence(self.ss[4], self.OG, self.g) 
         assert sorted(data, key=(lambda x: str(x))) == [[{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
-                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}], 
-                                                       [{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
-                                                        {'type': 'snow', 'degree': 'light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}]]
+                                                        {'type': 'snow', 'degree': 'extra-light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}], 
+                                                        [{'type': 'wind', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}, 
+                                                        {'type': 'snow', 'degree': 'extra-light', 'probability': 'medium', 'measure': {'unit': 'cm.', 'min': 10, 'max': 3}, 'snow_chance': True}]]  
     
     def test_treeify1(self):
         weather = {'type': 'rain', 
@@ -208,7 +218,7 @@ class TestCky(unittest.TestCase):
                    'probability': 'medium', 
                    'measure': 'UNKNOWN', 
                    'snow_chance': False}
-        assert stringify_tree(treeify_weather(weather)) == "possible drizzle "
+        assert stringify_tree(treeify_weather(weather)) == "possible light rain "
 
     def test_treeify3(self):
         weather = {'type': 'cloud', 
