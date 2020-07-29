@@ -127,6 +127,11 @@ def stringify_hour(hr):
     return ans
 
 def treeify_interval(intvl, now):
+    '''
+    Interval => CKY Time tree
+    e.g.
+    [5,12] =>  ['TIME', ['BTIME', 'tomorrow', ['TIMEWORD', start]]]
+    '''
     start  = stringify_hour(intvl[0])[-1]
     end    = stringify_hour(intvl[1])[0]
     nowstr = stringify_hour(now)[-1]
@@ -157,21 +162,21 @@ def treeify_interval(intvl, now):
         elif start == nowstr:
             if intvl[1] > 29:
                 if start != 'night':
-                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', start], ',',
                             'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
                 else:
                     ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
                             'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
             elif end != 'night':
                 if start != 'night':
-                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', start], ',',
                             'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
                 else:
                     ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
                             'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
             else:
                 if start != 'night':
-                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', ['TIMEWORD', start]], ',',
+                    ans = ['TIME', 'starting', ['BTIME', 'later', 'this', start], ',',
                             'continuing', 'until', ['BTIME', 'tonight']]
                 else:
                     ans = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], ',',
@@ -203,33 +208,38 @@ def treeify_interval(intvl, now):
     return ans
 
 def treeify_time(intervals, now):
-    '''
-    times = set()
-    for interval in intervals:
-        for i in interval:
-            if i in times:
-                times.remove(i)
-            else:
-                times.add(i)
-    times = sorted(list(times))
-    timestrs = [stringify_hour(hr%24) for hr in times]
-    text_ints = []
-    for i in range(0, len(timestrs), 2):
-        s, t = timestrs[i], timestrs[i+1]
-        intvl = {'start': {'word':s, 'mods':[]}, 'end': {'word':t, 'mods':[]}}
-        if times[i] > 24:
-            intvl['start']['mods'].append('tomorrow')
-        if times[i+1] > 24:
-            intvl['end']['mods'].append('tomorrow')
-        if  i > 0 and timestrs[i-1] == s:
-            intvl['start']['mods'].append('later')
-        text_ints.append(intvl)
-
-    if times[0] == now:
-        timestrs[0] = 'now'
-    '''
+    if len(intervals) == 0:
+        raise ValueError("No time intervals provided")
+    #first condense the intervals so that there is no overlapping
+    intervals.sort(key=lambda x: x[0])
+    for i in range(1, len(intervals))[::-1]:
+        s, t = intervals[i-1], intervals[i]
+        if s[1] >= t[0]:
+            s[1] = max(s[1],t[1])
+            intervals.pop(i)
+    # case 1: just one interval. is hopefully most cases
+    if len(intervals) == 1:
+        return treeify_interval(intervals[0], now)
+    # case 2: 2+ intervals, first starts now. "until ZZZ, starting again YYY"
+    if intervals[0][0] == now:
+        time_start = treeify_interval(intervals[0], now)
+        time_end = treeify_interval(intervals[1], now)
+        for t in time_end:
+            if type(t) == list and t[0] == 'BTIME':
+                return time_start + [',', 'starting', 'again', t]
+        raise ValueError("Something went wrong; {} has no BTIME".format(time_end))
+    # case 3: everything is tomorrow
+    if intervals[0][0] >= 29:
+        return ['TIME',['BTIME', 'tomorrow']]
+    # else: 2+ intervals, not starting now
     trees = [treeify_interval(intvl, now) for intvl in intervals]
-    return trees
+    ans = ['TIME', trees[0], 'and', trees[1]]
+    for t in trees[2:]:
+        if t[0] >= 29:
+            return ['TIME', ans, 'and', ['TIME',['BTIME', 'tomorrow']]]
+        ans = ['TIME', ans, 'and', t]
+    return ans
+
 
 def treeify(js):
     return ['S', treeify_weather(js['weather']), treeify_time(js['time'], js['now'])]
