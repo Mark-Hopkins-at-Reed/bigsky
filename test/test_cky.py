@@ -16,6 +16,16 @@ class TestCky(unittest.TestCase):
                    "windy and possible light flurries (with a chance of 10 – 3 cm. of snow) starting tomorrow, continuing until tonight and this morning.",
                    "humid until tonight.",
                    "possible heavy snow starting later this morning, continuing until tonight."]  
+        # a weather event looks like: 
+        #  {'time': {'start': 6, 'end': 10, 'now': 3},
+        #   'weather': [{'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]}
+        #
+        # a weather event looks like: 
+        #  {'now': 3,
+        #   'forecasts':
+        #      [{'time': {'start': 6, 'end': 10, 'now': 3},
+        #        'weather': [{'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False}]}]
+        
         self.data = [
             {'type': 'cloud', 'degree': 'heavy', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
             {'type': 'cloud', 'degree': 'light', 'probability': 'high', 'measure': 'N/A', 'snow_chance': False},
