@@ -234,10 +234,10 @@ def treeify_time(intervals, now):
     # else: 2+ intervals, not starting now
     trees = [treeify_interval(intvl, now) for intvl in intervals]
     ans = ['TIME', trees[0], 'and', trees[1]]
-    for t in trees[2:]:
-        if t[0] >= 29:
+    for i in range(2, len(trees)):
+        if intervals[i][0] >= 29:
             return ['TIME', ans, 'and', ['TIME',['BTIME', 'tomorrow']]]
-        ans = ['TIME', ans, 'and', t]
+        ans = ['TIME', ans, 'and', trees[i]]
     return ans
 
 
