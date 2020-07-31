@@ -221,7 +221,7 @@ def treeify_time(intervals, now):
     if len(intervals) == 1:
         return treeify_interval(intervals[0], now)
     # case 2: 2+ intervals, first starts now. "until ZZZ, starting again YYY"
-    if intervals[0][0] == now:
+    elif intervals[0][0] == now:
         time_start = treeify_interval(intervals[0], now)
         time_end = treeify_interval(intervals[1], now)
         for t in time_end:
@@ -229,16 +229,17 @@ def treeify_time(intervals, now):
                 return time_start + [',', 'starting', 'again', t]
         raise ValueError("Something went wrong; {} has no BTIME".format(time_end))
     # case 3: everything is tomorrow
-    if intervals[0][0] >= 29:
+    elif intervals[0][0] >= 29:
         return ['TIME',['BTIME', 'tomorrow']]
     # else: 2+ intervals, not starting now
-    trees = [treeify_interval(intvl, now) for intvl in intervals]
-    ans = ['TIME', trees[0], 'and', trees[1]]
-    for i in range(2, len(trees)):
-        if intervals[i][0] >= 29:
-            return ['TIME', ans, 'and', ['TIME',['BTIME', 'tomorrow']]]
-        ans = ['TIME', ans, 'and', trees[i]]
-    return ans
+    else:
+        trees = [treeify_interval(intvl, now) for intvl in intervals]
+        ans = ['TIME', trees[0], 'and', trees[1]]
+        for i in range(2, len(trees)):
+            if intervals[i][0] >= 29:
+                return ['TIME', ans, 'and', ['TIME',['BTIME', 'tomorrow']]]
+            ans = ['TIME', ans, 'and', trees[i]]
+        return ans
 
 
 def treeify(js):
