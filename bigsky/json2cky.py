@@ -242,7 +242,7 @@ def treeify_time(intervals, now):
 
 
 def treeify(js):
-    return ['S', treeify_weather(js['weather']), treeify_time(js['time'], js['now'])]
+    return ['S', treeify_weather(js['weather']), treeify_time(js['time'], js['now']), '.']
 
 def stringify_tree(tree):
     result = ''
