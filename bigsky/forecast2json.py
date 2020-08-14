@@ -64,11 +64,7 @@ class ForecastLoader:
     
     def search_where(self, predicate):
         """predicate sends an hourly data object to a bool"""
-        result = []
-        for d in self.datapoints:
-            if predicate(d):
-                result.append(d)
-        return result
+        return ForecastLoader.search_list(self.datapoints, predicate)
 
     @staticmethod
     def search_list(l, predicate):
@@ -160,10 +156,15 @@ class Classify:
     @staticmethod
     def is_humid(d):
         """This one ain't perfect but its pretty good, ~95% acc over all data"""
-        return d['apparentTemperature']-d['temperature'] > 1.5 and d['humidity'] > .8 and not is_cloud(d)
+        return d['apparentTemperature']-d['temperature'] > 1.5 and d['humidity'] > .8 and not Classify.is_cloud(d)
 
 def bucketvector(d, c):
-    return [c.is_precip(d), c.is_wind(d), c.is_cloud(d) and not c.is_precip(d), c.is_fog(d), c.is_humid(d)]
+    # consider making this a method of Classify
+    return [c.is_precip(d), 
+            c.is_wind(d), 
+            c.is_cloud(d) and not c.is_precip(d), 
+            c.is_fog(d), 
+            c.is_humid(d)]
 
 def guess_summary(d, c):
     words = ['Rain','Wind','Cloud','Fog','Humid']
@@ -257,6 +258,7 @@ def weather_times(forecast, l=None):
 
 def coincident_weather(intvldict, weather_type, weather_time):
     """Will tell me what weather type(s) coincide with the one given"""
+    # TODO: don't take weather_time as an arg
     main = intvldict[weather_type]
     ans = []
     for word, intvls in intvldict.items():
