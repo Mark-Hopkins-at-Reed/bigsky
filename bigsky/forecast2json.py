@@ -42,6 +42,7 @@ output:
 '''
 import bigsky.forecast as fc
 import torch
+from bigsky.json2cky import treeify, stringify_tree
 
 class ForecastLoader:
 
@@ -158,17 +159,17 @@ class Classify:
         """This one ain't perfect but its pretty good, ~95% acc over all data"""
         return d['apparentTemperature']-d['temperature'] > 1.5 and d['humidity'] > .8 and not Classify.is_cloud(d)
 
-def bucketvector(d, c):
-    # consider making this a method of Classify
-    return [c.is_precip(d), 
-            c.is_wind(d), 
-            c.is_cloud(d) and not c.is_precip(d), 
-            c.is_fog(d), 
-            c.is_humid(d)]
+    @staticmethod
+    def bucketvector(d, c):
+        return [c.is_precip(d), 
+                c.is_wind(d), 
+                c.is_cloud(d) and not c.is_precip(d), 
+                c.is_fog(d), 
+                c.is_humid(d)]
 
 def guess_summary(d, c):
     words = ['Rain','Wind','Cloud','Fog','Humid']
-    v = bucketvector(d, c)
+    v = Classify.bucketvector(d, c)
     s = []
     for i in range(len(v)):
         if v[i]:
@@ -184,8 +185,8 @@ def jsonify_hour(d, c):
         weather: a list of objects with (type, degree, probability) as in the target
     """
     ans = {'time': int(d['time'][:2])}
-    v = bucketvector(d, c)
-    cfns = [c.precip_intense, c.wind_intense, c.cloud_intense, lambda d: 2, lambda d: 2]
+    v = Classify.bucketvector(d, c)
+    cfns = [Classify.precip_intense, Classify.wind_intense, Classify.cloud_intense, lambda d: 2, lambda d: 2]
     words = ['rain','wind','cloud','fog','humid']
     weather = []
     for i in range(len(v)):
@@ -256,10 +257,10 @@ def weather_times(forecast, l=None):
         nettimedict[word] = z
     return nettimedict, intvldict
 
-def coincident_weather(intvldict, weather_type, weather_time):
+def coincident_weather(intvldict, weather_type):
     """Will tell me what weather type(s) coincide with the one given"""
-    # TODO: don't take weather_time as an arg
     main = intvldict[weather_type]
+    weather_time = sum([i[1]-i[0]+1 for i in main])
     ans = []
     for word, intvls in intvldict.items():
         if word == weather_type:
@@ -277,40 +278,56 @@ def coincident_weather(intvldict, weather_type, weather_time):
 
 def avg_weather(js_list, weather_type):
     """Will create an avg of a weather type (i.e. if it goes from heavy to light rain => 'moderate')"""
-    pass
+    intensity_table = [0,0,0,0]
+    intensity_labels = ['extra-light', 'light', 'moderate', 'heavy']
+    for hour in js_list:
+        for weather in hour['weather']:
+            if weather['type'] == weather_type:
+                intensity_table[intensity_labels.index(weather['degree'])] += 1
+    int_sum = sum([i * intensity_table[i] for i in range(len(intensity_table))])
+    wea_events = sum(intensity_table)
+    if wea_events == 0:
+        return None
+    avg_int = int_sum / wea_events
+    intensity = intensity_labels[round(avg_int)]
+    prob = 'high' if 'high' in '#'.join(['#'.join([w['probability'] if w['type']==weather_type else "" 
+                                            for w in h['weather']]) 
+                                        for h in js_list]) else 'medium'
+    return intensity, prob
 
 def priority_weather(timedict):
     """What is the most important kind of weather today?"""
-    if timedict['rain'] > 0:
+    if timedict.get('rain', 0) > 0:
         return 'rain'
-    if timedict['snow'] > 0:
+    if timedict.get('snow', 0) > 0:
         return 'snow'
-    if timedict['wind'] > 0:
+    if timedict.get('wind', 0) > 0:
         return 'wind'
-    if timedict['cloud'] > 0:
+    if timedict.get('cloud', 0) > 0:
         return 'cloud'
-    if timedict['fog'] > 0:
+    if timedict.get('fog', 0) > 0:
         return 'fog'
-    if timedict['humid'] > 0:
+    if timedict.get('humid', 0) > 0:
         return 'humid'
     return 'clear'
 
 def accumulate(js_list):
     """Figures out how much precip has accumulated. Should be an easy sum"""
-    pass
+    return sum([h['accumulation'] for h in js_list])
 
 def forecast2json(forecast):
     """
     Will put this all together:
+    0. Figure out what is the first hour
     1. Listify to basic json                                    READY
         - this is where all the bucketing happens
     2. Translate to times                                       READY
     3. Prioritize to find most important                        READY
-    4. look for coincidences                                    READY
+    4. Look for coincidences                                    READY
     5. Prioritize for most important coincidence                READY
-    6. Average dominant weather
-    7. Average coincident weather
-    8. Find net accumulation
+    6. Average dominant weather                                 READY
+    7. Average coincident weather                               READY
+    8. Find net accumulation                                    READY
     9. ANS = {
         now: # first hour
         times: # intvldict[weather_type] from <2>,<3>
@@ -321,4 +338,65 @@ def forecast2json(forecast):
         snow_chance: low temp? accumulation > 0? Unsure...
     }
     """
-    pass
+    start_hour = int(forecast['hourly']['data'][0]['time'][:2])
+    c = Classify
+    # <1>
+    js_list = listify_forecast(forecast, c)
+    # <2>
+    nettimedict, intvldict = weather_times(forecast, js_list)
+    # <3>
+    dominant_weather = priority_weather(nettimedict)
+    if dominant_weather == 'Clear':
+        return {
+            'now': start_hour,
+            'times': [[start_hour, start_hour+24]],
+            'weather': [
+                {
+                    'type': 'clear',
+                    'degree': 'moderate',
+                    'probability': 'high',
+                    'measure': 'N/A',
+                    'snow_chance': False
+                }
+            ]
+        }
+    # <4>
+    coincidents = coincident_weather(intvldict, dominant_weather)
+    coincident_dict = {word:(0 if word in coincidents else nettimedict[word]) for word in nettimedict}
+    # <5>
+    main_coincident = priority_weather(coincident_dict)
+    # <6>
+    dom_wobj = avg_weather(js_list, dominant_weather)
+    # <7>
+    co_wobj = avg_weather(js_list, main_coincident)
+    # <8>
+    acc = accumulate(js_list)
+    # <9>
+    ans = {
+        'now': start_hour,
+        'times': intvldict['dominant_weather']
+    }
+    if acc > 0:
+        dom_wobj['snow_chance'] = dominant_weather != 'Snow'
+        dom_wobj['measure'] = {
+            'min': int(acc),
+            'max': int(acc) + 1,
+            'unit': "in."
+        }
+    else:
+        dom_wobj['snow_chance'] = False
+        dom_wobj['measure'] = "N/A"
+    if co_wobj == None:
+        ans['weather'] = [dom_wobj]
+    else:
+        co_wobj['snow_chance'] = False
+        co_wobj['measure'] = "N/A"
+        ans['weather'] = [co_wobj, dom_wobj]
+    return ans
+
+
+def end2end(forecast):
+    js = forecast2json(forecast)
+    tree = treeify(js)
+    s = stringify_tree(tree)
+    print("\\"+s+"\\")

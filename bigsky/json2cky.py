@@ -153,7 +153,9 @@ def treeify_interval(intvl, now):
             ans = ['TIME',['BTIME', 'in', 'the', ['TIMEWORD', start]]]
     else:
         if intvl[0] == now:
-            if intvl[1] > 29:
+            if intvl[1]-now == 24:
+                ans = ['TIME', ['BTIME', 'throughout', 'the', 'day']]
+            elif intvl[1] > 29:
                 ans = ['TIME', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
             elif end != 'night':
                 ans = ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', end]]]
@@ -219,6 +221,7 @@ def treeify_time(intervals, now):
             intervals.pop(i)
     # case 1: just one interval. is hopefully most cases
     if len(intervals) == 1:
+        if intervals[0][1]-intervals[0][0] == 29 and
         return treeify_interval(intervals[0], now)
     # case 2: 2+ intervals, first starts now. "until ZZZ, starting again YYY"
     elif intervals[0][0] == now:
