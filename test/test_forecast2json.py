@@ -134,12 +134,13 @@ class TestForecast2Json(unittest.TestCase):
              'uvIndex': 0,
              'visibility': 10,
              'ozone': 359.7 }
-        expected = {'time': 21,
-                    'weather': [{'type': 'cloud', 
-                                 'degree': 'moderate', 
-                                 'probability': 'high'}],
-                    'accumulation': 0}
-        assert jsonify_hour(dp, classify) == expected
+        expected = {'time': 21, 
+                    'weather': [{'type': 'rain', 
+                                'degree': 'heavy', 
+                                'probability': 'high'}], 
+                    'accumulation': 0}   
+        result = jsonify_hour(dp, classify) 
+        assert result== expected
         
         
     def test_weather_times(self):

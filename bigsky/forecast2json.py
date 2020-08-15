@@ -111,7 +111,7 @@ class Classify:
             return maxi
         vec = torch.stack([torch.Tensor([1.0]+[d.get(k,0)/self.KEY_MAXES[k] for k in self.KEY_MAXES.keys()])])
         ans = self.rainnn(vec,None)[0]
-        return find_max(ans)
+        return find_max(ans[0])
 
     def cloud_intense(self, d):
         n = 0
