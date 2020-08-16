@@ -1,5 +1,6 @@
 import unittest
-from bigsky.forecast2json import ForecastLoader, Classify, jsonify_hour, weather_times
+from bigsky.forecast2json import ForecastLoader, Classify, jsonify_hour, weather_times, priority_weather
+from bigsky.forecast2json import coincident_weather, avg_weather, listify_forecast, accumulate, end2end
 from bigsky.forecast import read_forecast
 
 class TestForecast2Json(unittest.TestCase):
@@ -158,7 +159,58 @@ class TestForecast2Json(unittest.TestCase):
                          'wind': [], 
                          'humid': [], 
                          'fog': []})
-        
+
+    def test_priority_weather(self):
+        test_times = {"cloud":0, "fog":0}
+        assert priority_weather(test_times) == 'clear'
+        test_times['fog'] = 3
+        assert priority_weather(test_times) == 'fog'
+        test_times['cloud'] = 5
+        assert priority_weather(test_times) == 'cloud'
+        test_times['snow'] = 1
+        assert priority_weather(test_times) == 'snow'
+
+    def test_coincident_weather(self):
+        intvldict = {'rain': [[21,25]], 
+                    'snow': [], 
+                    'cloud': [[21, 26], [28, 47], [67, 69]], 
+                    'wind': [], 
+                    'humid': [], 
+                    'fog': []}
+        assert coincident_weather(intvldict, 'rain') == ['cloud']
+        assert coincident_weather(intvldict, 'cloud') == []         # Ya need most of the main weather to be covered
+        intvldict = {'rain': [[21,25]], 
+                    'snow': [], 
+                    'cloud': [[21, 26], [28, 47], [67, 69]], 
+                    'wind': [[19, 29]], 
+                    'humid': [[19, 23]], 
+                    'fog': []}
+        assert coincident_weather(intvldict, 'rain') == ['cloud', 'wind'] 
+
+    def test_avg_weather1(self):
+        forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
+        js_list = listify_forecast(forecast)
+        result = avg_weather(js_list, 'cloud')
+        assert result == ('light', 'high') # average intensity, average probability
+
+    def test_avg_weather2(self):
+        forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
+        js_list = listify_forecast(forecast)
+        result = avg_weather(js_list, 'cloud')
+        assert result == ('light', 'high') # they aren't all 'light', 'high'! I think
+
+    def test_accumulate(self):
+        forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
+        js_list = listify_forecast(forecast)
+        result = accumulate(js_list)
+        assert result == 0   # Really this only does something if there be snow or something, which we don't have in examples dataset
+
+    def test_end2end(self):
+        forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
+        assert end2end(forecast) == "Partly cloudy throughout the day."
+        forecast = read_forecast('data/examples/07-04-2020_06:49:18__21.4233714,-157.8062839')
+        assert end2end(forecast) == "Partly cloudy in the afternoon and tomorrow afternoon." 
+        # The actual expected result is "Humid throughout the day", so I ain't perfect
   
 if __name__ == "__main__":
 	unittest.main()

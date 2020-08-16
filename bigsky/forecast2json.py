@@ -186,7 +186,11 @@ def jsonify_hour(d, c):
     """
     ans = {'time': int(d['time'][:2])}
     v = Classify.bucketvector(d, c)
-    cfns = [Classify.precip_intense, Classify.wind_intense, Classify.cloud_intense, lambda d: 2, lambda d: 2]
+    cfns = [lambda c, d : c.precip_intense(d), 
+            lambda c, d : c.wind_intense(d), 
+            lambda c, d : c.cloud_intense(d), 
+            lambda c, d : 2, 
+            lambda c, d : 2]
     words = ['rain','wind','cloud','fog','humid']
     weather = []
     for i in range(len(v)):
@@ -198,7 +202,7 @@ def jsonify_hour(d, c):
                     word = 'snow'
                 if d['precipProbability'] < .65:
                     prob = 'medium'
-            intensity = c.intense_num_to_str(cfns[i](d))
+            intensity = c.intense_num_to_str(cfns[i](c, d))
             weather.append({
                 'type': word,
                 'degree': intensity,
@@ -265,19 +269,22 @@ def coincident_weather(intvldict, weather_type):
     for word, intvls in intvldict.items():
         if word == weather_type:
             continue
-        total_miss = 0
-        for s,t in main:
-            miss = t-s
-            for i in intvls:
-                if i[0] < t and i[1] > s:
-                    miss -= (min(i[1],t) - max(i[0],s))
-            total_miss += miss
-        if total_miss / weather_time < .2: #(say)
-            ans.append(word)
+        else:
+            total_miss = 0
+            for s,t in main:
+                miss = t-s
+                for i in intvls:
+                    if i[0] < t and i[1] > s:
+                        miss -= (min(i[1],t) - max(i[0],s))
+                total_miss += miss
+            if total_miss / weather_time < .2: #(say)
+                ans.append(word)
     return ans
 
 def avg_weather(js_list, weather_type):
     """Will create an avg of a weather type (i.e. if it goes from heavy to light rain => 'moderate')"""
+    if weather_type == 'clear':
+        return "light","low"
     intensity_table = [0,0,0,0]
     intensity_labels = ['extra-light', 'light', 'moderate', 'heavy']
     for hour in js_list:
@@ -339,17 +346,17 @@ def forecast2json(forecast):
     }
     """
     start_hour = int(forecast['hourly']['data'][0]['time'][:2])
-    c = Classify
+    c = Classify()
     # <1>
     js_list = listify_forecast(forecast, c)
     # <2>
     nettimedict, intvldict = weather_times(forecast, js_list)
     # <3>
     dominant_weather = priority_weather(nettimedict)
-    if dominant_weather == 'Clear':
+    if dominant_weather == 'clear':
         return {
             'now': start_hour,
-            'times': [[start_hour, start_hour+24]],
+            'time': [[start_hour, start_hour+24]],
             'weather': [
                 {
                     'type': 'clear',
@@ -362,19 +369,31 @@ def forecast2json(forecast):
         }
     # <4>
     coincidents = coincident_weather(intvldict, dominant_weather)
-    coincident_dict = {word:(0 if word in coincidents else nettimedict[word]) for word in nettimedict}
+    coincident_dict = {word:(0 if word not in coincidents else nettimedict[word]) for word in nettimedict}
     # <5>
     main_coincident = priority_weather(coincident_dict)
     # <6>
-    dom_wobj = avg_weather(js_list, dominant_weather)
+    dom_int, dom_prob = avg_weather(js_list, dominant_weather)
+    dom_wobj = {
+        'type': dominant_weather,
+        'degree': dom_int,
+        'probability': dom_prob
+    }
     # <7>
-    co_wobj = avg_weather(js_list, main_coincident)
+    co_wobj = None
+    if main_coincident != 'clear':
+        co_int, co_prob = avg_weather(js_list, main_coincident)
+        co_wobj = {
+            'type': main_coincident,
+            'degree': co_int,
+            'probability': co_prob
+        }
     # <8>
     acc = accumulate(js_list)
     # <9>
     ans = {
         'now': start_hour,
-        'times': intvldict['dominant_weather']
+        'time': intvldict[dominant_weather]
     }
     if acc > 0:
         dom_wobj['snow_chance'] = dominant_weather != 'Snow'
@@ -392,6 +411,8 @@ def forecast2json(forecast):
         co_wobj['snow_chance'] = False
         co_wobj['measure'] = "N/A"
         ans['weather'] = [co_wobj, dom_wobj]
+    #print(ans['now'])
+    #print(ans['time'])
     return ans
 
 
@@ -399,4 +420,15 @@ def end2end(forecast):
     js = forecast2json(forecast)
     tree = treeify(js)
     s = stringify_tree(tree)
-    print("\\"+s+"\\")
+    s = s[0].upper() + s[1:]
+    return s
+
+def compare_end2end(forecast):
+    s = end2end(forecast)
+    summ = forecast['hourly']['summary']
+    return s == summ, s, summ
+
+def print_compare_end2end(forecast):
+    print(forecast['hourly']['summary'])
+    print(end2end(forecast))
+    print("#####################")

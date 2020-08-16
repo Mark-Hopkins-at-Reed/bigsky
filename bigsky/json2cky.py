@@ -71,7 +71,7 @@ def treeify_precip(js):
                     ])    
     noun = ('drizzle' if typ == 'rain' else 'flurries') if deg == 'extra-light' else typ
     result.append(['PRECIPNOUN', noun])
-    if meas == 'UNKNOWN':
+    if type(meas) == str:
         return result  
     m_tree = treeify_measure(meas)
     if snow:
@@ -85,29 +85,33 @@ def treeify_precip(js):
     return result
 
 def treeify_weather(js):
-    t = js['type']
-    if t in "rain$snow":
-        return ['WEATHER', treeify_precip(js)]
-    elif t == 'wind':
-        if js['degree'] == 'heavy':
-            return ['WEATHER', 'dangerously', 'windy']
+    if len(js) == 1:
+        js = js[0]
+        t = js['type']
+        if t in "rain$snow":
+            return ['WEATHER', treeify_precip(js)]
+        elif t == 'wind':
+            if js['degree'] == 'heavy':
+                return ['WEATHER', 'dangerously', 'windy']
+            else:
+                return ['WEATHER', 'windy']
+        elif t == 'cloud':
+            if js['degree'] == 'heavy':
+                return ['WEATHER', 'overcast']
+            elif js['degree'] == 'moderate':
+                return ['WEATHER', 'mostly', 'cloudy']
+            else:
+                return ['WEATHER', 'partly', 'cloudy']
+        elif t == 'fog':
+            return ['WEATHER', 'foggy']
+        elif t == 'humid':
+            return ['WEATHER', 'humid']
+        elif t == 'clear':
+            return ['WEATHER', 'clear']
         else:
-            return ['WEATHER', 'windy']
-    elif t == 'cloud':
-        if js['degree'] == 'heavy':
-            return ['WEATHER', 'overcast']
-        elif js['degree'] == 'moderate':
-            return ['WEATHER', 'mostly', 'cloudy']
-        else:
-            return ['WEATHER', 'partly', 'cloudy']
-    elif t == 'fog':
-        return ['WEATHER', 'foggy']
-    elif t == 'humid':
-        return ['WEATHER', 'humid']
-    elif t == 'clear':
-        return ['WEATHER', 'clear']
+            raise ValueError(t, 'is not a supported kind/name of weather')
     else:
-        raise ValueError(t, 'is not a supported kind/name of weather')
+        return ['WEATHER', treeify_weather(js[0:1]), 'and', treeify_weather(js[1:])]
 
 TIME_LABELS = [
     (0, 5,   'night'),
@@ -153,7 +157,7 @@ def treeify_interval(intvl, now):
             ans = ['TIME',['BTIME', 'in', 'the', ['TIMEWORD', start]]]
     else:
         if intvl[0] == now:
-            if intvl[1]-now == 24:
+            if intvl[1]-now >= 24:
                 ans = ['TIME', ['BTIME', 'throughout', 'the', 'day']]
             elif intvl[1] > 29:
                 ans = ['TIME', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
@@ -162,7 +166,9 @@ def treeify_interval(intvl, now):
             else:
                 ans = ['TIME', 'until', ['BTIME', 'tonight']]
         elif start == nowstr:
-            if intvl[1] > 29:
+            if intvl[1]-now >= 24:
+                ans = ['TIME', ['BTIME', 'throughout', 'the', 'day']]
+            elif intvl[1] > 29:
                 if start != 'night':
                     ans = ['TIME', 'starting', ['BTIME', 'later', 'this', start], ',',
                             'continuing', 'until', ['BTIME', 'tomorrow', ['TIMEWORD', end]]]
@@ -216,12 +222,11 @@ def treeify_time(intervals, now):
     intervals.sort(key=lambda x: x[0])
     for i in range(1, len(intervals))[::-1]:
         s, t = intervals[i-1], intervals[i]
-        if s[1] >= t[0]:
+        if s[1] >= t[0]-2:
             s[1] = max(s[1],t[1])
             intervals.pop(i)
     # case 1: just one interval. is hopefully most cases
     if len(intervals) == 1:
-        if intervals[0][1]-intervals[0][0] == 29 and
         return treeify_interval(intervals[0], now)
     # case 2: 2+ intervals, first starts now. "until ZZZ, starting again YYY"
     elif intervals[0][0] == now:
