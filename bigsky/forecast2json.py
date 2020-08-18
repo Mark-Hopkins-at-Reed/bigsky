@@ -267,9 +267,7 @@ def coincident_weather(intvldict, weather_type):
     weather_time = sum([i[1]-i[0]+1 for i in main])
     ans = []
     for word, intvls in intvldict.items():
-        if word == weather_type:
-            continue
-        else:
+        if word != weather_type:
             total_miss = 0
             for s,t in main:
                 miss = t-s
@@ -297,8 +295,9 @@ def avg_weather(js_list, weather_type):
         return None
     avg_int = int_sum / wea_events
     intensity = intensity_labels[round(avg_int)]
-    prob = 'high' if 'high' in '#'.join(['#'.join([w['probability'] if w['type']==weather_type else "" 
-                                            for w in h['weather']]) 
+    prob = 'high' if 'high' in '#'.join(['#'.join([w['probability'] 
+                                                   if w['type']==weather_type else "" 
+                                                   for w in h['weather']]) 
                                         for h in js_list]) else 'medium'
     return intensity, prob
 

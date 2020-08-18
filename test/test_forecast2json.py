@@ -162,6 +162,7 @@ class TestForecast2Json(unittest.TestCase):
 
     def test_priority_weather(self):
         test_times = {"cloud":0, "fog":0}
+        # snow >> cloud >> fog >> clear
         assert priority_weather(test_times) == 'clear'
         test_times['fog'] = 3
         assert priority_weather(test_times) == 'fog'
@@ -177,7 +178,7 @@ class TestForecast2Json(unittest.TestCase):
                     'wind': [], 
                     'humid': [], 
                     'fog': []}
-        assert coincident_weather(intvldict, 'rain') == ['cloud']
+        assert set(coincident_weather(intvldict, 'rain')) == set(['cloud'])
         assert coincident_weather(intvldict, 'cloud') == []         # Ya need most of the main weather to be covered
         intvldict = {'rain': [[21,25]], 
                     'snow': [], 
@@ -185,25 +186,65 @@ class TestForecast2Json(unittest.TestCase):
                     'wind': [[19, 29]], 
                     'humid': [[19, 23]], 
                     'fog': []}
-        assert coincident_weather(intvldict, 'rain') == ['cloud', 'wind'] 
+        assert set(coincident_weather(intvldict, 'rain')) == set(['cloud', 'wind'] )
 
     def test_avg_weather1(self):
-        forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
-        js_list = listify_forecast(forecast)
+        #forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
+        #js_list = listify_forecast(forecast)       
+        js_list = [{'time': 21, 
+                    'weather': [{'type': 'cloud', 
+                                 'degree': 'light', 
+                                 'probability': 'high'}], 
+                    'accumulation': 0}, 
+                   {'time': 22, 
+                    'weather': [{'type': 'cloud', 
+                                 'degree': 'light', 
+                                 'probability': 'high'}], 
+                    'accumulation': 0}, 
+                   {'time': 23, 'weather': [{'type': 'cloud', 
+                                             'degree': 'light', 
+                                             'probability': 'high'}], 
+                    'accumulation': 0}]      
         result = avg_weather(js_list, 'cloud')
-        assert result == ('light', 'high') # average intensity, average probability
+        assert result == ('light', 'high') # averaged intensity, averaged probability
 
     def test_avg_weather2(self):
-        forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
-        js_list = listify_forecast(forecast)
+        js_list = [{'time': 21, 
+                    'weather': [{'type': 'cloud', 
+                                 'degree': 'light', 
+                                 'probability': 'low'}], 
+                    'accumulation': 0}, 
+                   {'time': 22, 
+                    'weather': [{'type': 'cloud', 
+                                 'degree': 'moderate', 
+                                 'probability': 'high'}], 
+                    'accumulation': 0}, 
+                   {'time': 23, 'weather': [{'type': 'cloud', 
+                                             'degree': 'moderate', 
+                                             'probability': 'high'}], 
+                    'accumulation': 0}]      
         result = avg_weather(js_list, 'cloud')
-        assert result == ('light', 'high') # they aren't all 'light', 'high'! I think
+        assert result == ('moderate', 'high') # averaged intensity, averaged probability
+        assert avg_weather(js_list, 'rain') == None # no rain in forecast
+
 
     def test_accumulate(self):
-        forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
-        js_list = listify_forecast(forecast)
+        js_list = [{'time': 21, 
+                    'weather': [{'type': 'snow', 
+                                 'degree': 'light', 
+                                 'probability': 'high'}], 
+                    'accumulation': 2}, 
+                   {'time': 22, 
+                    'weather': [{'type': 'snow', 
+                                 'degree': 'moderate', 
+                                 'probability': 'high'}], 
+                    'accumulation': 4}, 
+                   {'time': 23, 'weather': [{'type': 'cloud', 
+                                             'degree': 'moderate', 
+                                             'probability': 'high'}], 
+                    'accumulation': 0}]      
         result = accumulate(js_list)
-        assert result == 0   # Really this only does something if there be snow or something, which we don't have in examples dataset
+        assert result == 6   # Really this only does something if there be snow or something, which we don't have in examples dataset
 
     def test_end2end(self):
         forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
