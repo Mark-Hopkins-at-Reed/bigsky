@@ -40,24 +40,26 @@ class TestCky(unittest.TestCase):
         expected = ['TIME', 'starting', ['BTIME', 'later', 'tonight'], 
                     ',', 'continuing', 'until', ['BTIME', 'this', ['TIMEWORD', 'morning']]]  
         assert treeify_time([[1,3],[3,7],[6,9]] , 0) == expected
-        expected = ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', 'afternoon']],
-                     ',', 'starting', 'again', ['BTIME', 'this', ['TIMEWORD', 'afternoon']]]
+        expected = ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', 'evening']]]
         assert treeify_time([[6, 13],[15,20]], 6) == expected
         ### I should note, the CFG will not be able to parse this last one because it doesn't like "TIME and TIME"
         expected = ['TIME', ['TIME', ['TIME', ['BTIME', 'later', 'this', 'morning']], 
                                 'and', ['TIME', ['BTIME', 'in', 'the', ['TIMEWORD', 'afternoon']]]], 
                             'and', ['TIME', ['BTIME', 'tomorrow']]]  
+        expected = ['TIME', 
+                    ['TIME', ['BTIME', 'later', 'this', 'morning']], 'and', 
+                    ['TIME', ['BTIME', 'in', 'the', ['TIMEWORD', 'afternoon']]]]
         assert treeify_time([[8,9],[13,14],[30,33]],6) == expected
 
     def test_treeify(self):
         data = {
             'now': 6,
             'time': [[6,10]],
-            'weather': {'type': 'rain', 
+            'weather': [{'type': 'rain', 
                    'degree': 'heavy', 
                    'probability': 'high', 
                    'measure': {'max': 10, 'unit': 'in.', 'min': 6}, 
-                   'snow_chance': True}
+                   'snow_chance': True}]
         }
         expected = ['S',
             ['WEATHER', ['PRECIP', 
@@ -74,20 +76,19 @@ class TestCky(unittest.TestCase):
         assert stringify_tree(tree) == 'heavy rain (with a chance of 6 – 10 in. of snow) until later this morning.'
         data = {
             'now': 6, 'time': [[6,13],[15,20]],
-            'weather': {'type': 'cloud', 
+            'weather': [{'type': 'cloud', 
                    'degree': 'heavy', 
                    'probability': 'high', 
                    'measure': 'N/A',
-                   'snow_chance': False}
+                   'snow_chance': False}]
         }
-        expected = ['S',
-            ['WEATHER', 'overcast'],
-            ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', 'afternoon']], ',', 'starting', 'again', ['BTIME', 'this', ['TIMEWORD', 'afternoon']]],
-            '.'
-        ]
+        expected = ['S', 
+                    ['WEATHER', 'overcast'], 
+                    ['TIME', 'until', ['BTIME', 'this', ['TIMEWORD', 'evening']]], '.']
+
         tree = treeify(data)
         assert tree == expected
-        assert stringify_tree(tree) == 'overcast until this afternoon, starting again this afternoon.'
+        assert stringify_tree(tree) == 'overcast until this evening.'
 
         
   

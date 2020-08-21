@@ -1,3 +1,4 @@
+
 from bigsky.forecast2json import compare_end2end, ForecastLoader
 import sacrebleu
 from data.datapaths import TEST_DIRS
@@ -13,12 +14,13 @@ def maybe_generate_forecasts(e2e):
 
 def exact(e2e=None):
     e2e = maybe_generate_forecasts(e2e)
-    results = [ x[0] for x in e2e]
-    ct_right = 0
-    for b in results:
-        if b:
-            ct_right += 1
+    ct_right = len([x for x in e2e if x[0]])
     return ct_right / len(e2e)
+
+def mistakes(e2e=None):
+    e2e = maybe_generate_forecasts(e2e)
+    return [x[1:] for x in e2e if not x[0]]
+
 
 def bleu(e2e=None):
     e2e = maybe_generate_forecasts(e2e)

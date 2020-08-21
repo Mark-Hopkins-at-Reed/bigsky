@@ -209,7 +209,7 @@ class TestCky(unittest.TestCase):
                    'probability': 'high', 
                    'measure': {'max': 10, 'unit': 'in.', 'min': 6}, 
                    'snow_chance': True}
-        result = stringify_tree(treeify_weather(weather))
+        result = stringify_tree(treeify_weather([weather]))
         assert result == "heavy rain (with a chance of 6 – 10 in. of snow) "
     
     def test_treeify2(self):
@@ -218,7 +218,7 @@ class TestCky(unittest.TestCase):
                    'probability': 'medium', 
                    'measure': 'UNKNOWN', 
                    'snow_chance': False}
-        assert stringify_tree(treeify_weather(weather)) == "possible light rain "
+        assert stringify_tree(treeify_weather([weather])) == "possible light rain "
 
     def test_treeify3(self):
         weather = {'type': 'cloud', 
@@ -226,7 +226,7 @@ class TestCky(unittest.TestCase):
                    'probability': 'high', 
                    'measure': 'N/A',
                    'snow_chance': False}
-        assert stringify_tree(treeify_weather(weather)) == "overcast "
+        assert stringify_tree(treeify_weather([weather])) == "overcast "
 
 if __name__ == "__main__":
 	unittest.main()
