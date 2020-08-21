@@ -1,6 +1,6 @@
 import unittest
 from bigsky.forecast2json import ForecastLoader, Classify, jsonify_hour, weather_times, priority_weather
-from bigsky.forecast2json import coincident_weather, avg_weather, listify_forecast, accumulate, end2end
+from bigsky.forecast2json import coincident_weather, avg_weather, listify_forecast, accumulate, end2end, forecast2json
 from bigsky.forecast import read_forecast
 
 class TestForecast2Json(unittest.TestCase):
@@ -252,6 +252,35 @@ class TestForecast2Json(unittest.TestCase):
         forecast = read_forecast('data/examples/07-04-2020_06:49:18__21.4233714,-157.8062839')
         assert end2end(forecast) == "Partly cloudy in the afternoon and tomorrow afternoon." 
         # The actual expected result is "Humid throughout the day", so I ain't perfect
+
+    def test_forecast2json(self):
+        forecast = read_forecast('data/examples/07-04-2020_06:49:18__21.4233714,-157.8062839')
+        assert forecast2json(forecast) == {
+            'now': 20, 
+            'time': [[13, 15], [38, 39]], 
+            'weather': [{
+                'type': 'cloud', 
+                'degree': 'light', 
+                'probability': 'high', 
+                'snow_chance': False, 
+                'measure': 'N/A'
+            }]
+        }
+    
+    def test_forecast2json2(self):
+        forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
+        assert forecast2json(forecast) == {
+            'now': 21, 
+            'time': [[21, 26], [28, 47], [67, 69]], 
+            'weather': [{
+                'type': 'cloud', 
+                'degree': 'light', 
+                'probability': 'high', 
+                'snow_chance': False, 
+                'measure': 'N/A'
+            }]
+        }
+
   
 if __name__ == "__main__":
 	unittest.main()
