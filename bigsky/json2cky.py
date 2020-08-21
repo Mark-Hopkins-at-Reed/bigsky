@@ -225,6 +225,8 @@ def treeify_time(intervals, now):
         if s[1] >= t[0]-2:
             s[1] = max(s[1],t[1])
             intervals.pop(i)
+        elif t[0] > 25:
+            intervals.remove(t)
     # case 1: just one interval. is hopefully most cases
     if len(intervals) == 1:
         return treeify_interval(intervals[0], now)
@@ -237,14 +239,14 @@ def treeify_time(intervals, now):
                 return time_start + [',', 'starting', 'again', t]
         raise ValueError("Something went wrong; {} has no BTIME".format(time_end))
     # case 3: everything is tomorrow
-    elif intervals[0][0] >= 29:
+    elif intervals[0][0] >= 24:
         return ['TIME',['BTIME', 'tomorrow']]
     # else: 2+ intervals, not starting now
     else:
         trees = [treeify_interval(intvl, now) for intvl in intervals]
         ans = ['TIME', trees[0], 'and', trees[1]]
         for i in range(2, len(trees)):
-            if intervals[i][0] >= 29:
+            if intervals[i][0] >= 24:
                 return ['TIME', ans, 'and', ['TIME',['BTIME', 'tomorrow']]]
             ans = ['TIME', ans, 'and', trees[i]]
         return ans

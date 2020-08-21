@@ -51,6 +51,7 @@ class ForecastLoader:
         self.datapoints = []
 
     def add_dataset(self, file_path):
+        print('LOADING FROM: {}'.format(file_path))
         f = fc.read_forecast_dir(file_path)
         self.fors += f
         for forecast in f:
@@ -117,11 +118,11 @@ class Classify:
     def cloud_intense(self, d):
         n = 0
         cc = d['cloudCover']
-        if cc > .31:
+        if cc >= .31:
             n += 1
-            if cc > .59:
+            if cc >= .59:
                 n += 1
-                if cc > .88:
+                if cc >= .88:
                     n += 1
         return n
 
@@ -140,11 +141,11 @@ class Classify:
 
     @staticmethod
     def is_precip(d):
-        return d['precipProbability'] > .25
+        return d['precipProbability'] >= .25
 
     @staticmethod
     def is_cloud(d):
-        return d['cloudCover'] > .31
+        return d['cloudCover'] >= .31
 
     @staticmethod
     def is_wind(d):
@@ -200,7 +201,7 @@ def jsonify_hour(d, c):
             if i == 0:
                 if d['precipType'] == 'snow':
                     word = 'snow'
-                if d['precipProbability'] < .65:
+                if d['precipProbability'] <= .65:
                     prob = 'medium'
             intensity = c.intense_num_to_str(cfns[i](c, d))
             weather.append({
@@ -225,6 +226,7 @@ def listify_forecast(forecast, c=None):
 def weather_times(forecast, l=None):
     if l == None:
         l = listify_forecast(forecast)
+    now = l[0]['time']
     times = {
         'rain': [], 'snow': [],
         'cloud':[], 'wind': [],
@@ -238,8 +240,10 @@ def weather_times(forecast, l=None):
         if hours == []:
             intvldict[word] = []
             continue
+        while hours[0] < now:
+            hours[0] += 24
         for i in range(1, len(hours)):
-            while hours[i-1] >= hours[i]:
+            while hours[i-1] >= hours[i] or hours[i-1] < now:
                 hours[i] += 24
         intvls = []
         start = hours[0]
@@ -275,7 +279,7 @@ def coincident_weather(intvldict, weather_type):
                     if i[0] < t and i[1] > s:
                         miss -= (min(i[1],t) - max(i[0],s))
                 total_miss += miss
-            if total_miss / weather_time < .2: #(say)
+            if total_miss / weather_time < 0: # It looks like everything performs best when no coincidents can be; and smaller num is better
                 ans.append(word)
     return ans
 
@@ -309,12 +313,12 @@ def priority_weather(timedict):
         return 'snow'
     if timedict.get('wind', 0) > 0:
         return 'wind'
-    if timedict.get('cloud', 0) > 0:
-        return 'cloud'
     if timedict.get('fog', 0) > 0:
         return 'fog'
     if timedict.get('humid', 0) > 0:
         return 'humid'
+    if timedict.get('cloud', 0) > 0:
+        return 'cloud'
     return 'clear'
 
 def accumulate(js_list):
@@ -399,7 +403,7 @@ def forecast2json(forecast):
         dom_wobj['measure'] = {
             'min': int(acc),
             'max': int(acc) + 1,
-            'unit': "in."
+            'unit': "cm."
         }
     else:
         dom_wobj['snow_chance'] = False
