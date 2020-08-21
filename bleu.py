@@ -1,14 +1,19 @@
-from bigsky.forecast2json import end2end, compare_end2end, ForecastLoader
+
+from bigsky.forecast2json import compare_end2end, ForecastLoader
 import sacrebleu
 from data.datapaths import TEST_DIRS
 
-
-def exact(e2e=None):
+def maybe_generate_forecasts(e2e):
     if e2e == None:
         fl = ForecastLoader.from_dirs(TEST_DIRS)
         forecasts = fl.get_fors()
         print('------ LOADED FORECASTS ------')
         e2e = [compare_end2end(f) for f in forecasts]
+    return e2e
+    
+
+def exact(e2e=None):
+    e2e = maybe_generate_forecasts(e2e)
     results = [ x[0] for x in e2e]
     ct_right = 0
     for b in results:
@@ -17,19 +22,15 @@ def exact(e2e=None):
     return ct_right / len(e2e)
 
 def bleu(e2e=None):
-    if e2e == None:
-        fl = ForecastLoader.from_dirs(TEST_DIRS)
-        forecasts = fl.get_fors()
-        print('------ LOADED FORECASTS ------')
-        e2e = [compare_end2end(f) for f in forecasts]
+    e2e = maybe_generate_forecasts(e2e)
     golds = [x[2] for x in e2e]
     predictions = [x[1] for x in e2e]
     ## Yay list comprehensions!!!
-    bleu1 = sacrebleu.corpus_bleu(golds, [predictions])
-    bleu2 = sacrebleu.corpus_bleu(predictions, [golds])
-    return bleu1, bleu2
+    result = sacrebleu.corpus_bleu(predictions, [golds])
+    return result.score
 
 def main(test_dirs=None):
+    print('------ LOADIN FORECASTS ------')
     if test_dirs == None:
         fl = ForecastLoader.from_dirs(TEST_DIRS)
     else:
