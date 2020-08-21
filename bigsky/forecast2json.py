@@ -91,7 +91,7 @@ class ForecastLoader:
 
 class Classify:
     def __init__(self):
-        self.rainnn = torch.load('rain_classifier.exp.json')
+        self.rainnn = torch.load('models/rain_classifier.exp.json')
         self.KEY_MAXES = {'precipIntensity': 27.1218, 'precipProbability': 1, 
                             'precipAccumulation': 1.8684, 'temperature': 103.37, 
                             'dewPoint': 85.01, 'humidity': 1, 

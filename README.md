@@ -39,3 +39,30 @@ In a Python interpreter:
     bgrammar = Cfg.from_file('data/cfgs/weather.cfg').binarize()
     summaries = harvest(forecasts, hourly_summary)
     completeness(summaries, bgrammar)
+
+
+## To translate a forecast into natural language with rules
+
+In a Python interpreter:
+
+    from bigsky.forecast import read_forecast
+    from bigsky.forecast2json import end2end
+    forecast = read_forecast('data/examples/04-06-2020_23:28:41__45.5281774,-122.6014991') # For example
+    sentence = end2end(forecast)
+
+
+## To compare a forecast's given summary with the one predicted
+
+In a Python interpreter:
+
+    from bigsky.forecast import read_forecast
+    from bigsky.forecast2json import compare_end2end
+    forecast = read_forecast('data/examples/04-06-2020_23:28:41__45.5281774,-122.6014991') # For example
+    are_equal, prediction, gold = compare_end2end(forecast)
+
+
+## To evaluate BLEU score of rule-based system
+
+    python bleu.py
+
+Configure the directories to test in data/datapaths.py
