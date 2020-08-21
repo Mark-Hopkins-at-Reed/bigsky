@@ -149,36 +149,49 @@ class TestForecast2Json(unittest.TestCase):
         times = weather_times(forecast)
         assert times ==({'rain': 0, 
                          'snow': 0, 
-                         'cloud': 29,  # i.e. 29 total hours of cloud
+                         'cloud': 30,  # i.e. 29 total hours of cloud
                          'wind': 0, 
                          'humid': 0, 
                          'fog': 0}, 
                         {'rain': [], 
                          'snow': [], 
-                         'cloud': [[21, 26], [28, 47], [67, 69]], # here are the specific 29 hours
+                         'cloud': [[21, 47], [67, 69]], # here are the specific 29 hours
                          'wind': [], 
                          'humid': [], 
                          'fog': []})
 
     def test_priority_weather(self):
         test_times = {"cloud":0, "fog":0}
-        # snow >> cloud >> fog >> clear
+        # snow >> fog >> cloud >> clear
         assert priority_weather(test_times) == 'clear'
         test_times['fog'] = 3
         assert priority_weather(test_times) == 'fog'
         test_times['cloud'] = 5
+        assert priority_weather(test_times) == 'fog'
+        test_times['fog'] = 0
         assert priority_weather(test_times) == 'cloud'
+        test_times['fog'] = 3
         test_times['snow'] = 1
         assert priority_weather(test_times) == 'snow'
 
     def test_coincident_weather(self):
-        intvldict = {'rain': [[21,25]], 
+        intvldict = {'rain': [[21,26]], 
                     'snow': [], 
-                    'cloud': [[21, 26], [28, 47], [67, 69]], 
+                    'cloud': [[22,28]], 
                     'wind': [], 
                     'humid': [], 
                     'fog': []}
-        assert set(coincident_weather(intvldict, 'rain')) == set(['cloud'])
+        assert set(coincident_weather(intvldict, 'rain', 0.2)) == set(['cloud'])
+
+        intvldict = {'rain': [[21,26]], 
+                    'snow': [], 
+                    'cloud': [[23,28]], 
+                    'wind': [], 
+                    'humid': [], 
+                    'fog': []}
+        assert set(coincident_weather(intvldict, 'rain', 0.2)) == set([])
+
+
         assert coincident_weather(intvldict, 'cloud') == []         # Ya need most of the main weather to be covered
         intvldict = {'rain': [[21,25]], 
                     'snow': [], 
@@ -186,7 +199,7 @@ class TestForecast2Json(unittest.TestCase):
                     'wind': [[19, 29]], 
                     'humid': [[19, 23]], 
                     'fog': []}
-        assert set(coincident_weather(intvldict, 'rain')) == set(['cloud', 'wind'] )
+        assert set(coincident_weather(intvldict, 'rain', 0.2)) == set(['cloud', 'wind'] )
 
     def test_avg_weather1(self):
         #forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
@@ -250,28 +263,25 @@ class TestForecast2Json(unittest.TestCase):
         forecast = read_forecast('data/examples/06-04-2020_23:30:06__45.5281774,-122.6014991')
         assert end2end(forecast) == "Partly cloudy throughout the day."
         forecast = read_forecast('data/examples/07-04-2020_06:49:18__21.4233714,-157.8062839')
-        assert end2end(forecast) == "Partly cloudy in the afternoon and tomorrow afternoon." 
+        assert end2end(forecast) == "Humid in the morning." 
         # The actual expected result is "Humid throughout the day", so I ain't perfect
 
     def test_forecast2json(self):
         forecast = read_forecast('data/examples/07-04-2020_06:49:18__21.4233714,-157.8062839')
-        assert forecast2json(forecast) == {
-            'now': 20, 
-            'time': [[13, 15], [38, 39]], 
-            'weather': [{
-                'type': 'cloud', 
-                'degree': 'light', 
-                'probability': 'high', 
-                'snow_chance': False, 
-                'measure': 'N/A'
-            }]
-        }
+        assert forecast2json(forecast) == {'now': 20, 
+                                           'time': [[29, 36]], 
+                                           'weather': [{'type': 'humid', 
+                                                        'degree': 'moderate', 
+                                                        'probability': 'high', 
+                                                        'snow_chance': False, 
+                                                        'measure': 'N/A'}]}
+        
     
     def test_forecast2json2(self):
-        forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')
+        forecast = read_forecast('data/examples/04-06-2020_21__45.5281774,-122.6014991')      
         assert forecast2json(forecast) == {
             'now': 21, 
-            'time': [[21, 26], [28, 47], [67, 69]], 
+            'time': [[21, 47], [67, 69]], 
             'weather': [{
                 'type': 'cloud', 
                 'degree': 'light', 

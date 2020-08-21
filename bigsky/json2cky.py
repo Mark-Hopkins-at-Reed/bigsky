@@ -111,6 +111,7 @@ def treeify_weather(js):
         else:
             raise ValueError(t, 'is not a supported kind/name of weather')
     else:
+        print(js)
         return ['WEATHER', treeify_weather(js[0:1]), 'and', treeify_weather(js[1:])]
 
 TIME_LABELS = [

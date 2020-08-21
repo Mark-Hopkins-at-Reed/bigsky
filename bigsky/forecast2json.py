@@ -265,7 +265,7 @@ def weather_times(forecast, l=None):
         nettimedict[word] = z
     return nettimedict, intvldict
 
-def coincident_weather(intvldict, weather_type):
+def coincident_weather(intvldict, weather_type, overlap_threshold = 0):
     """Will tell me what weather type(s) coincide with the one given"""
     main = intvldict[weather_type]
     weather_time = sum([i[1]-i[0]+1 for i in main])
@@ -279,7 +279,7 @@ def coincident_weather(intvldict, weather_type):
                     if i[0] < t and i[1] > s:
                         miss -= (min(i[1],t) - max(i[0],s))
                 total_miss += miss
-            if total_miss / weather_time < 0: # It looks like everything performs best when no coincidents can be; and smaller num is better
+            if total_miss / weather_time < overlap_threshold: # It looks like everything performs best when no coincidents can be; and smaller num is better
                 ans.append(word)
     return ans
 
